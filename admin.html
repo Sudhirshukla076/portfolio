@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin - Messages</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+      margin: 0;
+      padding: 20px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.3rem;
+    }
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: none;
+      background: #4f46e5;
+      color: white;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    button.secondary {
+      background: #111827;
+      border: 1px solid #4b5563;
+    }
+    button:hover {
+      filter: brightness(1.1);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid #4b5563;
+      padding: 8px 10px;
+      vertical-align: top;
+    }
+    th {
+      background: #111827;
+    }
+    tr:nth-child(even) td {
+      background: #020617;
+    }
+    tr:nth-child(odd) td {
+      background: #030712;
+    }
+    .status {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      min-height: 18px;
+    }
+    .status.error {
+      color: #fca5a5;
+    }
+    .status.ok {
+      color: #4ade80;
+    }
+    .status.info {
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Admin - Contact Messages</h1>
+      <div style="font-size:0.8rem;color:#9ca3af;">Private admin area. Do not share access.</div>
+    </div>
+    <div class="top-actions">
+      <button onclick="loadMessages()">Refresh Messages</button>
+      <button class="secondary" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="status info" id="status">Click "Refresh Messages" to load latest data.</div>
+
+  <table id="messagesTable" style="display:none;">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Time</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Message</th>
+      </tr>
+    </thead>
+    <tbody id="messagesBody"></tbody>
+  </table>
+
+  <script>
+    // On load, check if admin is logged in
+    const storedKey = localStorage.getItem("adminKey");
+
+    if (!storedKey) {
+      // Not logged in, go to login page
+      window.location.href = "login.html";
+    }
+
+    async function loadMessages() {
+      const statusEl = document.getElementById("status");
+      const table = document.getElementById("messagesTable");
+      const tbody = document.getElementById("messagesBody");
+
+      const key = localStorage.getItem("adminKey");
+      if (!key) {
+        statusEl.textContent = "Not logged in. Redirecting to login…";
+        statusEl.className = "status error";
+        setTimeout(() => {
+          window.location.href = "login.html";
+        }, 800);
+        return;
+      }
+
+      statusEl.textContent = "Loading messages...";
+      statusEl.className = "status info";
+
+      try {
+        const res = await fetch(
+          `http://localhost:5000/api/messages?key=${encodeURIComponent(key)}`
+        );
+
+        if (res.status === 401) {
+          statusEl.textContent = "Unauthorized: invalid admin key. Please login again.";
+          statusEl.className = "status error";
+          table.style.display = "none";
+          // clear wrong key
+          localStorage.removeItem("adminKey");
+          setTimeout(() => {
+            window.location.href = "login.html";
+          }, 1000);
+          return;
+        }
+
+        if (!res.ok) {
+          statusEl.textContent = "Server error while loading messages.";
+          statusEl.className = "status error";
+          table.style.display = "none";
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!data.success) {
+          statusEl.textContent = data.message || "Error loading messages.";
+          statusEl.className = "status error";
+          table.style.display = "none";
+          return;
+        }
+
+        const messages = data.messages || [];
+        if (messages.length === 0) {
+          statusEl.textContent = "No messages yet.";
+          statusEl.className = "status info";
+          table.style.display = "none";
+          return;
+        }
+
+        tbody.innerHTML = "";
+        messages.forEach((msg, index) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${msg.time || ""}</td>
+            <td>${msg.name || ""}</td>
+            <td>${msg.email || ""}</td>
+            <td>${(msg.message || "").replace(/\n/g, "<br/>")}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        table.style.display = "table";
+        statusEl.textContent = `Loaded ${messages.length} messages.`;
+        statusEl.className = "status ok";
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "Error reaching backend.";
+        statusEl.className = "status error";
+        table.style.display = "none";
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem("adminKey");
+      window.location.href = "login.html";
+    }
+  </script>
+</body>
+</html>
