@@ -72,7 +72,7 @@ async function handleFormSubmit(event) {
   statusEl.style.color = "blue";
 
   try {
-    const response = await fetch("http://localhost:5000/api/contact", {
+    const response = await fetch("https://YOUR-BACKEND.onrender.com/api/ contact", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

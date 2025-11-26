@@ -136,9 +136,10 @@
       statusEl.className = "status info";
 
       try {
-        const res = await fetch(
-          `http://localhost:5000/api/messages?key=${encodeURIComponent(key)}`
-        );
+       const res = await fetch(
+  `https://YOUR-BACKEND.onrender.com/api/messages?key=${encodeURIComponent(key)}`
+);
+
 
         if (res.status === 401) {
           statusEl.textContent = "Unauthorized: invalid admin key. Please login again.";
