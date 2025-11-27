@@ -205,18 +205,22 @@
       <p class="section-subtitle">
         Feel free to reach out for internships, projects, or collaboration.
       </p>
-
       <div class="contact-grid">
         <div class="glass-card">
           <h3>Contact Details</h3>
           <p><strong>Email:</strong> shuklasudhir076@gmail.com</p>
           <p><strong>Location:</strong> Bengaluru, India</p>
           <p><strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/sudheer-kumar-shukla" target="_blank">Your LinkedIn Profile</a></p>
-          <p><strong>GitHub:</strong> <a href="https://github.com/Sudhirshukla076"target="_blank">Your Github Profile</a></p>
-          <p><strong>Instagram:</strong> <a href="https://www.instagram.com/shukla_sudhir_076?igsh=MXZhdWZ6MnVzdnJ2OA=="target="_blank">Your Instagram profile</a></p>
+          <p><strong>GitHub:</strong> <a href="https://github.com/Sudhirshukla076" target="_blank">Your Github Profile</a></p>
+          <p><strong>Instagram:</strong> <a href="https://www.instagram.com/shukla_sudhir_076?igsh=MXZhdWZ6MnVzdnJ2OA==" target="_blank">Your Instagram profile</a></p>
         </div>
 
-        <form class="contact-form glass-card" onsubmit="handleFormSubmit(event)">
+        <!-- ✅ Added id="contactForm" -->
+        <form
+          id="contactForm"
+          class="contact-form glass-card"
+          onsubmit="handleFormSubmit(event)"
+        >
           <h3>Send a Message</h3>
           <div class="form-group">
             <label for="name">Name</label>
@@ -230,10 +234,20 @@
             <label for="message">Message</label>
             <textarea id="message" rows="4" placeholder="Write your message" required></textarea>
           </div>
-          <button type="submit" class="btn primary-btn full-width">Send Message</button>
+
+          <!-- ✅ Added id="contactSubmitBtn" -->
+          <button
+            type="submit"
+            class="btn primary-btn full-width"
+            id="contactSubmitBtn"
+          >
+            Send Message
+          </button>
+
           <p id="formStatus" class="form-status"></p>
         </form>
       </div>
+
     </div>
   </section>
 

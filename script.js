@@ -1,102 +1,75 @@
-// Mobile menu toggle
-const menuToggle = document.getElementById("menuToggle");
-const navMenu = document.getElementById("navMenu");
+console.log("JS Loaded!");
 
-menuToggle.addEventListener("click", () => {
-  navMenu.classList.toggle("open");
-});
+// 🔗 Your Render backend URL:
+const BACKEND_URL = "https://portfolio-backend-7boz.onrender.com";
 
-// Active link on scroll
-const sections = document.querySelectorAll("section");
-const navLinks = document.querySelectorAll(".nav-link");
-
-window.addEventListener("scroll", () => {
-  let current = "";
-
-  sections.forEach((section) => {
-    const sectionTop = section.offsetTop - 100;
-    if (pageYOffset >= sectionTop) {
-      current = section.getAttribute("id");
-    }
-  });
-
-  navLinks.forEach((link) => {
-    link.classList.remove("active");
-    if (link.getAttribute("href") === `#${current}`) {
-      link.classList.add("active");
-    }
-  });
-});
-
-// Simple scroll reveal
-const revealElements = document.querySelectorAll(
-  ".section, .project-card, .card, .timeline-item, .contact-form"
-);
-revealElements.forEach((el) => el.classList.add("reveal"));
-
-const observer = new IntersectionObserver(
-  (entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("visible");
-      }
-    });
-  },
-  { threshold: 0.15 }
-);
-
-revealElements.forEach((el) => observer.observe(el));
-
-// Footer year
-const yearSpan = document.getElementById("year");
-if (yearSpan) {
-  yearSpan.textContent = new Date().getFullYear();
-}
-
-// Contact form (demo only)
+// ⭐ MAKE IT GLOBAL, so index.html can find it
 async function handleFormSubmit(event) {
   event.preventDefault();
 
-  const name = document.getElementById("name").value.trim();
-  const email = document.getElementById("email").value.trim();
-  const message = document.getElementById("message").value.trim();
+  const nameEl = document.getElementById("name");
+  const emailEl = document.getElementById("email");
+  const messageEl = document.getElementById("message");
   const statusEl = document.getElementById("formStatus");
+  const submitBtn = document.getElementById("contactSubmitBtn");
+
+  const name = nameEl.value.trim();
+  const email = emailEl.value.trim();
+  const message = messageEl.value.trim();
 
   if (!name || !email || !message) {
-    statusEl.textContent = "Please fill all fields.";
-    statusEl.style.color = "red";
+    statusEl.textContent = "Please fill in all fields.";
+    statusEl.style.color = "salmon";
     return;
   }
 
-  statusEl.textContent = "Sending...";
-  statusEl.style.color = "blue";
+  // Disable button temporarily
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Sending...";
+  statusEl.textContent = "";
+  statusEl.style.color = "#aaa";
 
   try {
-    const response = await fetch("https://YOUR-BACKEND.onrender.com/api/ contact", {
+    console.log("Sending to backend:", `${BACKEND_URL}/api/contact`);
+
+    const res = await fetch(`${BACKEND_URL}/api/contact`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, message })
+      // ❌ removed `signal: controller.signal`
     });
 
-    const data = await response.json();
+    console.log("Response status:", res.status);
 
-    if (data.success) {
-      statusEl.textContent = "Message sent successfully! ✅";
-      statusEl.style.color = "green";
-
-      // Clear form
-      document.getElementById("name").value = "";
-      document.getElementById("email").value = "";
-      document.getElementById("message").value = "";
-    } else {
-      statusEl.textContent = "Something went wrong!";
-      statusEl.style.color = "red";
+    let data;
+    try {
+      data = await res.json();
+      console.log("Response JSON:", data);
+    } catch (parseErr) {
+      console.error("Error parsing JSON response:", parseErr);
+      data = null;
     }
-  } catch (error) {
-    statusEl.textContent = "Server not reachable!";
-    statusEl.style.color = "red";
+
+    if (!res.ok || !data || !data.success) {
+      statusEl.textContent =
+        (data && data.message) || "Something went wrong!";
+      statusEl.style.color = "salmon";
+      return;
+    }
+
+    // Success
+    statusEl.textContent = "Message sent successfully! ✔️";
+    statusEl.style.color = "#4ade80";
+
+    nameEl.value = "";
+    emailEl.value = "";
+    messageEl.value = "";
+  } catch (err) {
+    console.error("Contact form error:", err);
+    statusEl.textContent = "Cannot reach server. Check your connection or backend.";
+    statusEl.style.color = "salmon";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Send Message";
   }
 }
-
