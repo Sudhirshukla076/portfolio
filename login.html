@@ -1,148 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Login</title>
+
   <style>
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #1d4ed8 0, #020617 45%, #000 100%);
-      color: #e5e7eb;
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: white;
+      height: 100vh;
       margin: 0;
-      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .card {
-      background: rgba(15, 23, 42, 0.9);
-      border-radius: 16px;
-      padding: 24px 28px;
-      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
-      max-width: 360px;
-      width: 100%;
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      backdrop-filter: blur(18px);
+
+    .login-box {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+      padding: 30px 35px;
+      border-radius: 12px;
+      width: 320px;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
     }
-    h1 {
-      margin: 0 0 4px;
-      font-size: 1.4rem;
+
+    h2 {
+      margin-bottom: 20px;
+      font-weight: 600;
     }
-    p.subtitle {
-      margin: 0 0 16px;
-      font-size: 0.85rem;
-      color: #9ca3af;
-    }
-    label {
-      display: block;
-      font-size: 0.85rem;
-      margin-bottom: 6px;
-    }
+
     input {
       width: 100%;
-      padding: 8px 10px;
+      padding: 10px;
       border-radius: 8px;
-      border: 1px solid #4b5563;
-      background: #020617;
-      color: #e5e7eb;
-      font-size: 0.9rem;
-      outline: none;
+      border: none;
+      margin-bottom: 15px;
+      background: rgba(255,255,255,0.15);
+      color: white;
     }
-    input:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.5);
-    }
+
     button {
       width: 100%;
-      margin-top: 14px;
-      padding: 8px 12px;
-      border-radius: 999px;
+      padding: 10px;
+      border-radius: 8px;
       border: none;
-      background: linear-gradient(135deg, #6366f1, #ec4899);
+      background: #4f46e5;
       color: white;
-      font-weight: 600;
+      font-weight: bold;
       cursor: pointer;
-      font-size: 0.95rem;
     }
+
     button:hover {
-      filter: brightness(1.1);
+      background: #4338ca;
     }
-    .status {
-      margin-top: 8px;
-      font-size: 0.8rem;
-      min-height: 18px;
-    }
-    .status.error {
-      color: #fca5a5;
-    }
-    .status.ok {
-      color: #4ade80;
-    }
-    .small-hint {
+
+    #errorMsg {
       margin-top: 10px;
-      font-size: 0.75rem;
-      color: #6b7280;
+      color: #f87171;
+      font-size: 0.9rem;
+      height: 1rem;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Admin Login</h1>
-    <p class="subtitle">Enter your admin password to view contact messages.</p>
 
-    <form onsubmit="handleLogin(event)">
-      <label for="password">Admin Password</label>
-      <input
-        type="password"
-        id="password"
-        placeholder="Enter admin password"
-        autocomplete="current-password"
-        required
-      />
-      <button type="submit">Login</button>
-    </form>
+  <div class="login-box">
+    <h2>Admin Login</h2>
 
-    <div id="status" class="status"></div>
-    <p class="small-hint">
-      (For now this is a simple local admin login. Do not share this password.)
-    </p>
+    <input type="password" id="adminKeyInput" placeholder="Enter admin key">
+
+    <button onclick="handleLogin()">Login</button>
+
+    <div id="errorMsg"></div>
   </div>
 
+
   <script>
-    const ADMIN_PASSWORD = "admin123"; // 🔴 keep this in sync with backend
+    // SAME KEY as your backend (admin123 or .env value)
+    const ADMIN_KEY = "admin123";
 
-    // If already logged in, go directly to admin page
-    if (localStorage.getItem("adminKey")) {
-      window.location.href = "admin.html";
-    }
+    function handleLogin() {
+      const key = document.getElementById("adminKeyInput").value.trim();
+      const error = document.getElementById("errorMsg");
 
-    function handleLogin(event) {
-      event.preventDefault();
-      const pwdInput = document.getElementById("password");
-      const statusEl = document.getElementById("status");
-      const entered = pwdInput.value.trim();
-
-      if (!entered) {
-        statusEl.textContent = "Please enter password.";
-        statusEl.className = "status error";
+      if (!key) {
+        error.textContent = "Please enter the admin key.";
         return;
       }
 
-      if (entered !== ADMIN_PASSWORD) {
-        statusEl.textContent = "Incorrect password.";
-        statusEl.className = "status error";
+      if (key !== ADMIN_KEY) {
+        error.textContent = "Invalid key!";
         return;
       }
 
-      // Save key for admin.html to use
-      localStorage.setItem("adminKey", entered);
-      statusEl.textContent = "Login successful! Redirecting…";
-      statusEl.className = "status ok";
-
-      setTimeout(() => {
-        window.location.href = "admin.html";
-      }, 600);
+      // redirect to admin page with key
+      window.location.href = `admin.html?key=${encodeURIComponent(key)}`;
     }
   </script>
+
 </body>
 </html>

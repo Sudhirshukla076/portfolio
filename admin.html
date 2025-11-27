@@ -109,6 +109,7 @@
   </table>
 
   <script>
+    const API_BASE = "https://portfolio-backend-7boz.onrender.com";
     // On load, check if admin is logged in
     const storedKey = localStorage.getItem("adminKey");
 
@@ -137,7 +138,14 @@
 
       try {
        const res = await fetch(
-  `https://YOUR-BACKEND.onrender.com/api/messages?key=${encodeURIComponent(key)}`
+  `https://portfolio-backend-7boz.onrender.com/api/admin/messages?key=admin123`,
+  {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Admin-Key": key
+    }
+  }
 );
 
 
