@@ -26,156 +26,173 @@ const messagesFilePath = path.join(__dirname, "messages.json");
 app.use(cors());
 app.use(express.json());
 
-// Ensure messages.json exists (sync version – simpler and safe)
+// Ensure messages.json exists
 function ensureMessagesFile() {
-  if (!fs.existsSync(messagesFilePath)) {
-    console.log("📁 messages.json not found, creating a new one...");
-    fs.writeFileSync(messagesFilePath, "[]", "utf-8");
-  }
+if (!fs.existsSync(messagesFilePath)) {
+ console.log("📁 messages.json not found, creating a new one...");
+ fs.writeFileSync(messagesFilePath, "[]", "utf-8");
+}
 }
 
 // Setup nodemailer transporter (Gmail example)
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
+service: "gmail",
+auth: {
+ user: process.env.SMTP_USER,
+ pass: process.env.SMTP_PASS
+}
 });
 
 // Test route
 app.get("/", (req, res) => {
-  res.send("Backend is running ✅");
+res.send("Backend is running ✅");
 });
 
-// CONTACT FORM route: save to file + send email
+// CONTACT FORM route: save to file + send email (email in background)
 app.post("/api/contact", async (req, res) => {
-  const { name, email, message } = req.body;
+const { name, email, message } = req.body;
 
-  console.log("📩 New contact form submission:");
-  console.log("Name:", name);
-  console.log("Email:", email);
-  console.log("Message:", message);
+console.log("📩 New contact form submission:");
+console.log("Name:", name);
+console.log("Email:", email);
+console.log("Message:", message);
 
-  if (!name || !email || !message) {
-    return res
-      .status(400)
-      .json({ success: false, message: "All fields are required." });
-  }
+if (!name || !email || !message) {
+ return res
+   .status(400)
+   .json({ success: false, message: "All fields are required." });
+}
 
-  try {
-    // Ensure file exists
-    ensureMessagesFile();
+try {
+ // 1) Ensure file exists
+ ensureMessagesFile();
 
-    // Read existing messages
-    let messages = [];
-    try {
-      const raw = fs.readFileSync(messagesFilePath, "utf-8") || "[]";
-      messages = JSON.parse(raw);
-      if (!Array.isArray(messages)) {
-        console.error("❌ messages.json content is not an array, resetting.");
-        messages = [];
-      }
-    } catch (e) {
-      console.error("❌ Error reading/parsing messages.json, resetting:", e);
-      messages = [];
-    }
+ // 2) Read existing messages safely
+ let messages = [];
+ try {
+   const raw = fs.readFileSync(messagesFilePath, "utf-8") || "[]";
+   messages = JSON.parse(raw);
+   if (!Array.isArray(messages)) {
+     console.error("❌ messages.json content is not an array, resetting.");
+     messages = [];
+   }
+ } catch (e) {
+   console.error("❌ Error reading/parsing messages.json, resetting:", e);
+   messages = [];
+ }
 
-    const newMessage = {
-      name,
-      email,
-      message,
-      time: new Date().toLocaleString()
-    };
+ // 3) Create new message
+ const newMessage = {
+   name,
+   email,
+   message,
+   time: new Date().toLocaleString()
+ };
 
-    // Add and save
-    messages.push(newMessage);
-    fs.writeFileSync(
-      messagesFilePath,
-      JSON.stringify(messages, null, 2),
-      "utf-8"
-    );
+ messages.push(newMessage);
 
-    console.log("💾 Message saved to:", messagesFilePath);
+ // 4) Save back to file
+ fs.writeFileSync(
+   messagesFilePath,
+   JSON.stringify(messages, null, 2),
+   "utf-8"
+ );
 
-    // Try sending email (but don't fail the whole request if email fails)
-    try {
-      if (process.env.SMTP_USER && process.env.SMTP_PASS && process.env.EMAIL_TO) {
-        await transporter.sendMail({
-          from: process.env.EMAIL_FROM || process.env.SMTP_USER,
-          to: process.env.EMAIL_TO,
-          subject: `New contact from ${name}`,
-          text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
-          html: `<p><strong>Name:</strong> ${name}</p>
-                 <p><strong>Email:</strong> ${email}</p>
-                 <p><strong>Message:</strong><br>${message.replace(
-                   /\n/g,
-                   "<br>"
-                 )}</p>`
-        });
+ console.log("💾 Message saved to:", messagesFilePath);
 
-        console.log("✉️ Email notification sent");
-      } else {
-        console.log("✉️ Email config missing, skipping email send...");
-      }
-    } catch (emailErr) {
-      console.error("❌ Error sending email:", emailErr.message);
-      // we don't return error to user here, just log it
-    }
+ // 5) Respond to frontend immediately
+ if (!res.headersSent) {
+   res.json({
+     success: true,
+     message: "Message saved successfully!"
+   });
+ }
 
-    return res.json({
-      success: true,
-      message: "Message saved successfully!"
-    });
-  } catch (err) {
-    console.error("❌ Error handling contact form:", err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error saving message." });
-  }
+ // 6) Send email in the background (does NOT block response)
+ if (
+   process.env.SMTP_USER &&
+   process.env.SMTP_PASS &&
+   process.env.EMAIL_TO
+ ) {
+   transporter
+     .sendMail({
+       from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+       to: process.env.EMAIL_TO,
+       subject: `New contact from ${name}`,
+       text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
+       html: `<p><strong>Name:</strong> ${name}</p>
+              <p><strong>Email:</strong> ${email}</p>
+              <p><strong>Message:</strong><br>${message.replace(
+                /\n/g,
+                "<br>"
+              )}</p>`
+     })
+     .then(() => {
+       console.log("✉️ Email notification sent (background)");
+     })
+     .catch((emailErr) => {
+       console.error("❌ Error sending email (background):", emailErr);
+     });
+ } else {
+   console.log("✉️ Email config missing, skipping email send...");
+ }
+} catch (err) {
+ console.error("❌ Error handling contact form:", err);
+ if (!res.headersSent) {
+   return res
+     .status(500)
+     .json({ success: false, message: "Server error saving message." });
+ }
+}
 });
 
 // ADMIN route: get all messages (protected by key)
 app.get("/api/messages", (req, res) => {
-  const key = req.query.key;
-  console.log("🔐 /api/messages called");
-  console.log("Query key:", key);
-  console.log("Expected key:", ADMIN_API_KEY);
+const key = req.query.key;
+console.log("🔐 /api/messages called");
+console.log("Query key:", key);
+console.log("Expected key:", ADMIN_API_KEY);
 
-  if (key !== ADMIN_API_KEY) {
-    console.log("❌ Admin key mismatch, sending 401");
-    return res.status(401).json({ success: false, message: "Unauthorized" });
-  }
+if (key !== ADMIN_API_KEY) {
+ console.log("❌ Admin key mismatch, sending 401");
+ return res.status(401).json({ success: false, message: "Unauthorized" });
+}
 
-  ensureMessagesFile();
+try {
+ ensureMessagesFile();
+} catch (e) {
+ console.error("❌ Error ensuring messages file:", e);
+ // even if file creation fails, don't 500 – just return empty
+ return res.json({ success: true, messages: [] });
+}
 
-  let messages = [];
+let messages = [];
 
-  try {
-    const raw = fs.readFileSync(messagesFilePath, "utf-8") || "[]";
+try {
+ const raw = fs.readFileSync(messagesFilePath, "utf-8") || "[]";
 
-    try {
-      messages = JSON.parse(raw);
-      if (!Array.isArray(messages)) {
-        console.warn("messages.json not an array, resetting.");
-        messages = [];
-      }
-    } catch (parseErr) {
-      console.error("❌ Error parsing messages.json:", parseErr);
-      messages = [];
-    }
-  } catch (readErr) {
-    console.error("❌ Error reading messages file:", readErr);
-    messages = [];
-  }
+ try {
+   messages = JSON.parse(raw);
+   if (!Array.isArray(messages)) {
+     console.warn("messages.json not an array, resetting.");
+     messages = [];
+   }
+ } catch (parseErr) {
+   console.error("❌ Error parsing messages.json:", parseErr);
+   messages = [];
+ }
+} catch (readErr) {
+ console.error("❌ Error reading messages file:", readErr);
+ messages = [];
+}
 
-  console.log("✅ Returning", messages.length, "messages");
-  return res.json({ success: true, messages });
+console.log("✅ Returning", messages.length, "messages");
+return res.json({ success: true, messages });
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
-  console.log("Messages file path:", messagesFilePath);
-  console.log("Admin API key:", ADMIN_API_KEY);
+console.log(`🚀 Server is running on http://localhost:${PORT}`);
+console.log("Messages file path:", messagesFilePath);
+console.log("Admin API key:", ADMIN_API_KEY);
 });
