@@ -26,7 +26,7 @@ const messagesFilePath = path.join(__dirname, "messages.json");
 app.use(cors());
 app.use(express.json());
 
-// Ensure messages.json exists
+// Ensure messages.json exists (sync version – simpler and safe)
 function ensureMessagesFile() {
   if (!fs.existsSync(messagesFilePath)) {
     console.log("📁 messages.json not found, creating a new one...");
@@ -68,14 +68,16 @@ app.post("/api/contact", async (req, res) => {
     ensureMessagesFile();
 
     // Read existing messages
-    const raw = fs.readFileSync(messagesFilePath, "utf-8") || "[]";
-
     let messages = [];
     try {
+      const raw = fs.readFileSync(messagesFilePath, "utf-8") || "[]";
       messages = JSON.parse(raw);
-      if (!Array.isArray(messages)) messages = [];
+      if (!Array.isArray(messages)) {
+        console.error("❌ messages.json content is not an array, resetting.");
+        messages = [];
+      }
     } catch (e) {
-      console.error("❌ Error parsing messages.json, resetting:", e);
+      console.error("❌ Error reading/parsing messages.json, resetting:", e);
       messages = [];
     }
 
@@ -106,7 +108,10 @@ app.post("/api/contact", async (req, res) => {
           text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
           html: `<p><strong>Name:</strong> ${name}</p>
                  <p><strong>Email:</strong> ${email}</p>
-                 <p><strong>Message:</strong><br>${message.replace(/\n/g, "<br>")}</p>`
+                 <p><strong>Message:</strong><br>${message.replace(
+                   /\n/g,
+                   "<br>"
+                 )}</p>`
         });
 
         console.log("✉️ Email notification sent");
@@ -142,28 +147,30 @@ app.get("/api/messages", (req, res) => {
     return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
+  ensureMessagesFile();
+
+  let messages = [];
+
   try {
-    ensureMessagesFile();
     const raw = fs.readFileSync(messagesFilePath, "utf-8") || "[]";
 
-    let messages = [];
     try {
       messages = JSON.parse(raw);
-      if (!Array.isArray(messages)) messages = [];
-    } catch (e) {
-      console.error("❌ Error parsing messages.json:", e);
+      if (!Array.isArray(messages)) {
+        console.warn("messages.json not an array, resetting.");
+        messages = [];
+      }
+    } catch (parseErr) {
+      console.error("❌ Error parsing messages.json:", parseErr);
       messages = [];
     }
-
-    console.log("✅ Returning", messages.length, "messages");
-    return res.json({ success: true, messages });
-  } catch (err) {
-    console.error("❌ Error reading messages file:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error reading messages."
-    });
+  } catch (readErr) {
+    console.error("❌ Error reading messages file:", readErr);
+    messages = [];
   }
+
+  console.log("✅ Returning", messages.length, "messages");
+  return res.json({ success: true, messages });
 });
 
 // Start server
